@@ -52,7 +52,7 @@ export default function Index() {
         </header>
 
         <div className="space-y-8">
-          <ImageUploader onImageSelected={handleImageSelected} isProcessing={isProcessing} />
+          <ImageUploader onImageSelected={handleImageSelected} isProcessing={isProcessing} onReset={() => setResult(null)} />
           {result && <BirthdayResult info={result} />}
         </div>
       </div>
