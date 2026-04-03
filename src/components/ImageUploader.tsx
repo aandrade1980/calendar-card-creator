@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 interface ImageUploaderProps {
   onImageSelected: (base64: string) => void;
   isProcessing: boolean;
+  onReset?: () => void;
 }
 
-export function ImageUploader({ onImageSelected, isProcessing }: ImageUploaderProps) {
+export function ImageUploader({ onImageSelected, isProcessing, onReset }: ImageUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -97,7 +98,10 @@ export function ImageUploader({ onImageSelected, isProcessing }: ImageUploaderPr
           variant="ghost"
           size="sm"
           className="mt-3 text-muted-foreground"
-          onClick={() => setPreview(null)}
+          onClick={() => {
+            setPreview(null);
+            onReset?.();
+          }}
         >
           <Upload className="h-4 w-4 mr-2" />
           Upload a different image
