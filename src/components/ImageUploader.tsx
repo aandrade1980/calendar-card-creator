@@ -44,11 +44,10 @@ export function ImageUploader({ onImageSelected, isProcessing }: ImageUploaderPr
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-2xl transition-all duration-300 ${
-          isDragging
-            ? "border-primary bg-primary/5 scale-[1.02]"
-            : "border-border hover:border-primary/50"
-        } ${preview ? "p-4" : "p-12"}`}
+        className={`relative border-2 border-dashed rounded-2xl transition-all duration-300 animate-fade-in ${isDragging
+          ? "border-primary bg-primary/5 scale-[1.02]"
+          : "border-border hover:border-primary/50"
+          } ${preview ? "p-4" : "p-12 md:p-20 lg:p-24 animate-pulse-slow"}`}
       >
         {preview ? (
           <div className="space-y-4">
@@ -66,18 +65,18 @@ export function ImageUploader({ onImageSelected, isProcessing }: ImageUploaderPr
           </div>
         ) : (
           <label className="flex flex-col items-center gap-4 cursor-pointer">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <div className={`h-16 w-16 md:h-24 lg:h-28 rounded-2xl bg-primary/10 flex items-center justify-center ${isDragging ? 'animate-bounce-slow' : ''}`}>
               {isProcessing ? (
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                <Loader2 className="h-8 w-8 md:h-12 lg:h-14 text-primary animate-spin" />
               ) : (
-                <ImageIcon className="h-8 w-8 text-primary" />
+                <ImageIcon className="h-8 w-8 md:h-12 lg:h-14 text-primary" />
               )}
             </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-foreground">
+            <div className="text-center animate-fade-in">
+              <p className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground">
                 Drop your birthday invite here
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm md:text-base lg:text-lg text-muted-foreground mt-1">
                 or click to browse • PNG, JPG, WEBP
               </p>
             </div>
