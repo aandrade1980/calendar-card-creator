@@ -39,6 +39,10 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        celebration: {
+          DEFAULT: "hsl(var(--celebration))",
+          foreground: "hsl(var(--celebration-foreground))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
