@@ -57,7 +57,7 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Button asChild className="flex-1" size="lg">
+          <Button asChild className="flex-1 py-6 text-base sm:py-0 sm:text-sm h-14 sm:h-11" size="lg">
             <a href={googleUrl} target="_blank" rel="noopener noreferrer">
               <CalendarPlus className="h-5 w-5 mr-2" />
               Add to Google Calendar
@@ -67,7 +67,7 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
             variant="outline"
             size="lg"
             onClick={handleDownloadIcs}
-            className="flex-1"
+            className="flex-1 py-6 text-base sm:py-0 sm:text-sm h-14 sm:h-11"
           >
             <Download className="h-5 w-5 mr-2" />
             Download .ics
