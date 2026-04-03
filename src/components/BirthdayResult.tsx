@@ -38,6 +38,60 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
     return `${hour12}:${m.toString().padStart(2, "0")} ${ampm}`;
   };
 
+  const parseEndTimeFromNotes = (notes?: string): string | undefined => {
+    if (!notes) return undefined;
+    const patterns = [
+      // Match time ranges like "18:30 to 21:30", "18:30 a 21:30", "6:30 PM to 8:30 PM" - capture SECOND time
+      /\d{1,2}:\d{2}(?:\s*[APap][Mm])?\s*(?:to|a|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?(?:\s*(?:hrs?|hours?))?)/i,
+      // Match "Time is 18:30 to 21:30 hrs" or "Time is 18:30 a 21:30 hrs"
+      /time\s+is\s+\d{1,2}:\d{2}\s*(?:to|a|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?(?:\s*(?:hrs?|hours?))?)/i,
+      /ends?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+      /finishes?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+      /until\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+    ];
+    for (const pattern of patterns) {
+      const match = notes.match(pattern);
+      if (match) {
+        let timeStr = match[1].trim().toUpperCase();
+
+        // Strip out "hrs", "hours", "hr", etc. that may be appended
+        timeStr = timeStr.replace(/\s*(hrs?|hours?|hrs?\.?)\b/gi, '').trim();
+
+        if (timeStr.includes('AM') || timeStr.includes('PM')) {
+          const isPM = timeStr.includes('PM');
+          const [h, m] = timeStr.replace(/[APM]/gi, '').trim().split(':').map(Number);
+          let hour24 = h % 12;
+          if (isPM) hour24 += 12;
+          return `${hour24.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        }
+        return timeStr;
+      }
+    }
+    return undefined;
+  };
+
+  const formatTimeRange = (timeStr: string, endTimeStr?: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const startAmpm = h >= 12 ? "PM" : "AM";
+    const startHour12 = h % 12 || 12;
+
+    let endH: number, endAmpm: string, endHour12: number;
+    const effectiveEndTime = endTimeStr || parseEndTimeFromNotes(info.additional_notes);
+    if (effectiveEndTime) {
+      const [endHour, endMin] = effectiveEndTime.split(":").map(Number);
+      endH = endHour;
+      endAmpm = endH >= 12 ? "PM" : "AM";
+      endHour12 = endH % 12 || 12;
+      return `${startHour12}:${m.toString().padStart(2, "0")} ${startAmpm} - ${endHour12}:${endMin.toString().padStart(2, "0")} ${endAmpm}`;
+    }
+
+    // Default to +2 hours if no end time
+    endH = (h + 2) % 24;
+    endAmpm = endH >= 12 ? "PM" : "AM";
+    endHour12 = endH % 12 || 12;
+    return `${startHour12}:${m.toString().padStart(2, "0")} ${startAmpm} - ${endHour12}:${m.toString().padStart(2, "0")} ${endAmpm}`;
+  };
+
   return (
     <Card className="overflow-hidden border-0 shadow-lg bg-card">
       <div className="h-2 bg-gradient-to-r from-primary via-secondary to-celebration" />
@@ -49,7 +103,7 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
         <div className="grid gap-3">
           <InfoRow icon={<User className="h-4 w-4" />} label="Who" value={info.name} />
           <InfoRow icon={<CalendarPlus className="h-4 w-4" />} label="Date" value={formatDate(info.date)} />
-          <InfoRow icon={<Clock className="h-4 w-4" />} label="Time" value={formatTime(info.time)} />
+          <InfoRow icon={<Clock className="h-4 w-4" />} label="Time" value={formatTimeRange(info.time, info.end_time)} />
           <InfoRow icon={<MapPin className="h-4 w-4" />} label="Where" value={info.location} />
           {info.additional_notes && (
             <InfoRow icon={<FileText className="h-4 w-4" />} label="Notes" value={info.additional_notes} />
