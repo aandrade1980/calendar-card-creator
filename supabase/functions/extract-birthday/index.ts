@@ -39,7 +39,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (in HH:MM 24h format), and the location/place. If you can't find a specific field, set it to null.",
+                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (in HH:MM 24h format), the location/place, and the end time (in HH:MM 24h format if explicitly stated, e.g., 'ends at 20:00'). If you can't find a specific field, set it to null.",
               },
               {
                 type: "image_url",
@@ -60,6 +60,7 @@ serve(async (req) => {
                   name: { type: "string", description: "The birthday person's name" },
                   date: { type: "string", description: "Event date in YYYY-MM-DD format" },
                   time: { type: "string", description: "Event start time in HH:MM 24h format" },
+                  end_time: { type: "string", description: "Event end time in HH:MM 24h format (e.g., '20:00' if the invitation states when the event ends)" },
                   location: { type: "string", description: "Event venue/location" },
                   additional_notes: { type: "string", description: "Any other relevant details like theme, dress code, etc." },
                 },
