@@ -1,7 +1,7 @@
 import { CalendarPlus, MapPin, Clock, User, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile } from "@/lib/calendar";
+import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile, getEndTime } from "@/lib/calendar";
 import { motion } from "framer-motion";
 
 interface BirthdayResultProps {
@@ -50,15 +50,13 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
     });
   };
 
-  const formatTimeRange = (timeStr: string, endTimeStr?: string) => {
-    const [h, m] = timeStr.split(":").map(Number);
+  const formatTimeRange = (info: BirthdayInfo) => {
+    const [h, m] = info.time.split(":").map(Number);
     const startAmpm = h >= 12 ? "PM" : "AM";
     const startHour12 = h % 12 || 12;
 
     let endH: number, endAmpm: string, endHour12: number;
-    // We use a simplified version here, assuming the parsing logic is already correct in the library if needed
-    // or just using the info.end_time if provided.
-    const effectiveEndTime = endTimeStr;
+    const effectiveEndTime = getEndTime(info);
     if (effectiveEndTime) {
       const [endHour, endMin] = effectiveEndTime.split(":").map(Number);
       endH = endHour;
@@ -94,7 +92,7 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
           <div className="grid gap-1">
             <InfoRow icon={<User className="h-4 w-4" />} label="Who" value={info.name} />
             <InfoRow icon={<CalendarPlus className="h-4 w-4" />} label="Date" value={formatDate(info.date)} />
-            <InfoRow icon={<Clock className="h-4 w-4" />} label="Time" value={formatTimeRange(info.time, info.end_time)} />
+            <InfoRow icon={<Clock className="h-4 w-4" />} label="Time" value={formatTimeRange(info)} />
             <InfoRow icon={<MapPin className="h-4 w-4" />} label="Where" value={info.location} />
             {info.additional_notes && (
               <InfoRow icon={<FileText className="h-4 w-4" />} label="Notes" value={info.additional_notes} />
