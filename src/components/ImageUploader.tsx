@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { Upload, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, Image as ImageIcon, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ImageUploaderProps {
   onImageSelected: (base64: string) => void;
@@ -38,75 +39,119 @@ export function ImageUploader({ onImageSelected, isProcessing, onReset }: ImageU
 
   return (
     <div className="w-full">
-      <div
+      <motion.div
+        layout
         onDragOver={(e) => {
           e.preventDefault();
           setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-2xl transition-all duration-300 animate-fade-in ${isDragging
-          ? "border-primary bg-primary/5 scale-[1.02]"
+        className={`relative border-2 border-dashed rounded-2xl transition-all duration-300 ${isDragging
+          ? "border-primary bg-primary/5 scale-[1.01]"
           : "border-border hover:border-primary/50"
-          } ${preview ? "p-4" : "p-12 md:p-20 lg:p-24 animate-pulse-slow"}`}
+          } ${preview ? "p-4" : "p-12 md:p-20 lg:p-24"}`}
       >
-        {preview ? (
-          <div className="space-y-4">
-            <img
-              src={preview}
-              alt="Birthday invitation preview"
-              className="w-full max-h-80 object-contain rounded-xl"
-            />
-            {isProcessing && (
-              <div className="flex items-center justify-center gap-2 text-primary font-medium">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Extracting birthday details…</span>
+        <AnimatePresence mode="wait">
+          {preview ? (
+            <motion.div 
+              key="preview"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="space-y-4"
+            >
+              <div className="relative group overflow-hidden rounded-xl">
+                <img
+                  src={preview}
+                  alt="Birthday invitation preview"
+                  className="w-full max-h-80 object-contain rounded-xl"
+                />
+                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            )}
-          </div>
-        ) : (
-          <label className="flex flex-col items-center gap-4 cursor-pointer">
-            <div className={`h-16 w-16 md:h-24 lg:h-28 rounded-2xl bg-primary/10 flex items-center justify-center ${isDragging ? 'animate-bounce-slow' : ''}`}>
-              {isProcessing ? (
-                <Loader2 className="h-8 w-8 md:h-12 lg:h-14 text-primary animate-spin" />
-              ) : (
-                <ImageIcon className="h-8 w-8 md:h-12 lg:h-14 text-primary" />
-              )}
-            </div>
-            <div className="text-center animate-fade-in">
-              <p className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground">
-                Drop your birthday invite here
-              </p>
-              <p className="text-sm md:text-base lg:text-lg text-muted-foreground mt-1">
-                or click to browse • PNG, JPG, WEBP
-              </p>
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) processFile(file);
-              }}
-            />
-          </label>
-        )}
-      </div>
-      {preview && !isProcessing && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-3 text-muted-foreground"
-          onClick={() => {
-            setPreview(null);
-            onReset?.();
-          }}
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload a different image
-        </Button>
-      )}
+              
+              <div className="flex flex-col items-center gap-4">
+                <AnimatePresence mode="wait">
+                  {isProcessing ? (
+                    <motion.div 
+                      key="analyzing"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center justify-center gap-3 text-primary font-semibold py-2"
+                    >
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="animate-pulse">Analyzing invitation details…</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="actions"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="group/btn text-muted-foreground hover:text-primary hover:border-primary/50 transition-all rounded-full px-6"
+                        onClick={() => {
+                          setPreview(null);
+                          onReset?.();
+                        }}
+                      >
+                        <motion.div
+                          whileHover={{ rotate: -180 }}
+                          transition={{ duration: 0.4, ease: "easeInOut" }}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                        </motion.div>
+                        Use a different image
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.label 
+              key="uploader"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-4 cursor-pointer"
+            >
+              <motion.div 
+                whileHover={{ scale: 1.05, rotate: 2 }}
+                whileTap={{ scale: 0.95 }}
+                className={`h-20 w-20 md:h-28 lg:h-32 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner`}
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-10 w-10 animate-spin" />
+                ) : (
+                  <ImageIcon className="h-10 w-10" />
+                )}
+              </motion.div>
+              <div className="text-center">
+                <p className="text-xl md:text-2xl font-bold text-foreground">
+                  Upload the invitation
+                </p>
+                <p className="text-sm md:text-base text-muted-foreground mt-1 font-medium">
+                  Drop it here or click to browse
+                </p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) processFile(file);
+                }}
+              />
+            </motion.label>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

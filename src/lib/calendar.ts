@@ -11,7 +11,7 @@ export interface BirthdayInfo {
  * Parse end time from additional_notes if not directly extracted.
  * Looks for patterns like "ends at 20:00", "finishes at 8:00 PM", etc.
  */
-function parseEndTimeFromNotes(notes?: string): string | undefined {
+export function parseEndTimeFromNotes(notes?: string): string | undefined {
   if (!notes) return undefined;
 
   // Match patterns like "ends at 20:00", "ends at 8:00 PM", "18:30 to 21:30 hrs", "18:30 a 21:30"
@@ -54,7 +54,7 @@ function parseEndTimeFromNotes(notes?: string): string | undefined {
 /**
  * Get end time: first check explicit end_time, then parse from notes
  */
-function getEndTime(info: BirthdayInfo): string | undefined {
+export function getEndTime(info: BirthdayInfo): string | undefined {
   return info.end_time || parseEndTimeFromNotes(info.additional_notes);
 }
 
