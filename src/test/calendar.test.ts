@@ -65,13 +65,14 @@ describe("Calendar Utilities", () => {
       expect(getEndTime(info)).toBe("21:30");
     });
 
-    it("should use parsed time from info.time if it contains a range", () => {
+    it("should handle Blackpink invitation: 18:30 a 21:30 hrs", () => {
       const info: BirthdayInfo = {
-        name: "Test",
-        date: "2024-04-05",
+        name: "Justina",
+        date: "2026-03-07",
         time: "18:30 a 21:30 hrs",
         location: "Home",
       };
+      expect(parseStartTime(info.time)).toBe("18:30");
       expect(getEndTime(info)).toBe("21:30");
     });
   });

@@ -14,29 +14,28 @@ export interface BirthdayInfo {
 export function parseEndTimeFromNotes(notes?: string): string | undefined {
   if (!notes) return undefined;
 
-  // Match patterns like "ends at 20:00", "ends at 8:00 PM", "18:30 to 21:30 hrs", "18:30 a 21:30"
   const patterns = [
-    // Look specifically for ranges with delimiters: a, to, until, through, dash
-    /(\d{1,2}:\d{2})\s*(?:to|a|until|through|[-–—])\s*(\d{1,2}:\d{2})(?:\s*[APap][Mm])?(?:\s*(?:hrs?|hours?|hr\.?))?/i,
-    // Look for 12h ranges: "6:30 PM to 9:30 PM"
-    /(\d{1,2}:\d{2}\s*[APap][Mm])\s*(?:to|a|until|through|[-–—])\s*(\d{1,2}:\d{2}\s*[APap][Mm])/i,
-    // Look for specific "ends at" phrases
-    /ends?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
-    /finishes?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
-    /until\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+    // 1. Explicit ranges: "18:30 a 21:30", "18:30 to 21:30", "6:30 PM - 9:30 PM"
+    // Capture group 2 is always the end time
+    /(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*(?:to|a|until|through|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)(?:\s*(?:hrs?|hours?|hr\.?))?/i,
+    
+    // 2. Explicit end phrases: "ends at 21:30", "finishes at 9:00 PM"
+    // Capture group 1 is the end time
+    /(?:ends?|finishes?|until)\s+(?:at\s+)?(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
   ];
 
-  for (const pattern of patterns) {
-    const match = notes.match(pattern);
+  for (let i = 0; i < patterns.length; i++) {
+    const match = notes.match(patterns[i]);
     if (match) {
-      // For ranges (2 groups), we want the second group. For single matches (1 group), we want the first.
-      const rawTime = match[2] || match[1];
+      // If it's the range pattern (index 0), end time is in group 2.
+      // If it's the phrase pattern (index 1), end time is in group 1.
+      const rawTime = i === 0 ? match[2] : match[1];
       let timeStr = rawTime.trim().toUpperCase();
 
-      // Strip out "hrs", "hours", "hr", etc.
+      // Clean up suffixes
       timeStr = timeStr.replace(/\s*(hrs?|hours?|hr\.?)\b/gi, '').trim();
 
-      // Convert 12-hour to 24-hour format
+      // 12h -> 24h
       if (timeStr.includes('AM') || timeStr.includes('PM')) {
         const isPM = timeStr.includes('PM');
         const [h, m] = timeStr.replace(/[APM]/gi, '').trim().split(':').map(Number);
@@ -45,7 +44,7 @@ export function parseEndTimeFromNotes(notes?: string): string | undefined {
         return `${hour24.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       }
 
-      // Already in 24-hour format
+      // Already 24h
       const [h, m] = timeStr.split(':').map(Number);
       if (!isNaN(h) && !isNaN(m)) {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
