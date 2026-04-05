@@ -33,14 +33,14 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a birthday invitation parser. Extract birthday event details from images. Always respond using the provided tool.",
+            content: "You are a birthday invitation parser. Extract birthday event details from images. Always respond using the provided tool. Pay close attention to end times (e.g., 'ends at 8 PM', 'until 22:00', '18:00 to 21:00').",
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (in HH:MM 24h format), the location/place, and the end time (in HH:MM 24h format if explicitly stated, e.g., 'ends at 20:00'). If you can't find a specific field, set it to null.",
+                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (provide the FULL time text from the image for better parsing), the location/place, and the end time (in HH:MM 24h format if explicitly stated). If you can't find a specific field, set it to null.",
               },
               {
                 type: "image_url",
@@ -60,10 +60,10 @@ serve(async (req) => {
                 properties: {
                   name: { type: "string", description: "The birthday person's name" },
                   date: { type: "string", description: "Event date in YYYY-MM-DD format" },
-                  time: { type: "string", description: "Event start time in HH:MM 24h format" },
-                  end_time: { type: "string", description: "Event end time in HH:MM 24h format (e.g., '20:00' if the invitation states when the event ends)" },
+                  time: { type: "string", description: "Event start time or FULL time string from the image (e.g., '18:30 a 21:30 hrs')" },
+                  end_time: { type: "string", description: "Event end time in HH:MM 24h format if explicitly stated" },
                   location: { type: "string", description: "Event venue/location" },
-                  additional_notes: { type: "string", description: "Any other relevant details like theme, dress code, etc." },
+                  additional_notes: { type: "string", description: "Any other details. Include the original time text here as well to be safe." },
                 },
                 required: ["name", "date", "time", "location"],
                 additionalProperties: false,

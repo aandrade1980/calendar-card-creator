@@ -25,6 +25,7 @@ export default function Index() {
       if (error) throw error;
 
       if (data?.success && data?.data) {
+        console.log("Extraction successful:", data.data);
         setResult(data.data);
         toast.success("Birthday details extracted!");
         

@@ -1,7 +1,7 @@
 import { CalendarPlus, MapPin, Clock, User, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile, getEndTime } from "@/lib/calendar";
+import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile, getEndTime, parseStartTime } from "@/lib/calendar";
 import { motion } from "framer-motion";
 
 interface BirthdayResultProps {
@@ -51,7 +51,8 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
   };
 
   const formatTimeRange = (info: BirthdayInfo) => {
-    const [h, m] = info.time.split(":").map(Number);
+    const cleanStartTime = parseStartTime(info.time);
+    const [h, m] = cleanStartTime.split(":").map(Number);
     const startAmpm = h >= 12 ? "PM" : "AM";
     const startHour12 = h % 12 || 12;
 
