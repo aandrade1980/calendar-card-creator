@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseEndTimeFromNotes, getEndTime, BirthdayInfo, parseStartTime } from "../lib/calendar";
+import { parseEndTimeFromNotes, getEndTime, BirthdayInfo, parseStartTime, parseDate } from "../lib/calendar";
 
 describe("Calendar Utilities", () => {
   describe("parseStartTime", () => {
@@ -39,6 +39,11 @@ describe("Calendar Utilities", () => {
       const notes = "Party ends at 8:00 PM";
       expect(parseEndTimeFromNotes(notes)).toBe("20:00");
     });
+
+    it("should parse 'end time 21:30'", () => {
+      const notes = "theme, end time 21:30";
+      expect(parseEndTimeFromNotes(notes)).toBe("21:30");
+    });
   });
 
   describe("getEndTime", () => {
@@ -74,6 +79,16 @@ describe("Calendar Utilities", () => {
       };
       expect(parseStartTime(info.time)).toBe("18:30");
       expect(getEndTime(info)).toBe("21:30");
+    });
+  });
+
+  describe("parseDate", () => {
+    it("should parse YYYY-MM-DD", () => {
+      expect(parseDate("2026-03-07")).toBe("2026-03-07");
+    });
+    it("should parse 'Sábado 7 de Marzo'", () => {
+      const year = new Date().getFullYear().toString();
+      expect(parseDate("Sábado 7 de Marzo")).toBe(`${year}-03-07`);
     });
   });
 });

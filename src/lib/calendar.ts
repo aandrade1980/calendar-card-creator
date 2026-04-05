@@ -1,7 +1,7 @@
 export interface BirthdayInfo {
   name: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
+  date: string; // YYYY-MM-DD or raw string
+  time: string; // HH:MM or raw string
   location: string;
   end_time?: string; // HH:MM - explicitly stated end time
   additional_notes?: string;
@@ -19,9 +19,9 @@ export function parseEndTimeFromNotes(notes?: string): string | undefined {
     // Capture group 2 is always the end time
     /(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*(?:to|a|until|through|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)(?:\s*(?:hrs?|hours?|hr\.?))?/i,
     
-    // 2. Explicit end phrases: "ends at 21:30", "finishes at 9:00 PM"
+    // 2. Explicit end phrases: "ends at 21:30", "end time 9:00 PM", "until 22:00"
     // Capture group 1 is the end time
-    /(?:ends?|finishes?|until)\s+(?:at\s+)?(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+    /(?:ends?|finishes?|until|end\s+time)\s+(?:at\s+|is\s+)?(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
   ];
 
   for (let i = 0; i < patterns.length; i++) {
@@ -87,9 +87,46 @@ export function parseStartTime(timeStr: string): string {
   return timeStr.split(/\s+/)[0].replace(/[^0-9:]/g, '');
 }
 
+/**
+ * Parse date from the date field.
+ * Attempts to handle YYYY-MM-DD or raw strings like "Sábado 7 de Marzo".
+ */
+export function parseDate(dateStr: string): string {
+  // If it's already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  const months: Record<string, string> = {
+    'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+    'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+    'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+    'january': '01', 'february': '02', 'march': '03', 'april': '04',
+    'may': '05', 'june': '06', 'july': '07', 'august': '08',
+    'september': '09', 'october': '10', 'november': '11', 'december': '12'
+  };
+
+  const lowerStr = dateStr.toLowerCase();
+  const dayMatch = lowerStr.match(/(\d{1,2})/);
+  const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+  
+  let month = '01';
+  for (const [name, num] of Object.entries(months)) {
+    if (lowerStr.includes(name)) {
+      month = num;
+      break;
+    }
+  }
+
+  // Use current year if not found
+  const yearMatch = lowerStr.match(/(\d{4})/);
+  const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
+  return `${year}-${month}-${day}`;
+}
+
 export function generateGoogleCalendarUrl(info: BirthdayInfo): string {
+  const cleanDate = parseDate(info.date);
   const cleanStartTime = parseStartTime(info.time);
-  const startDate = info.date.replace(/-/g, "");
+  const startDate = cleanDate.replace(/-/g, "");
   const startTime = cleanStartTime.replace(":", "") + "00";
 
   // Calculate end time: use explicit end_time or parse from notes, otherwise default to +2 hours
@@ -119,8 +156,9 @@ export function generateGoogleCalendarUrl(info: BirthdayInfo): string {
 }
 
 export function generateIcsFile(info: BirthdayInfo): string {
+  const cleanDate = parseDate(info.date);
   const cleanStartTime = parseStartTime(info.time);
-  const startDate = info.date.replace(/-/g, "");
+  const startDate = cleanDate.replace(/-/g, "");
   const startTime = cleanStartTime.replace(":", "") + "00";
 
   // Calculate end time: use explicit end_time or parse from notes, otherwise default to +2 hours

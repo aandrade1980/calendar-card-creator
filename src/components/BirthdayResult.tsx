@@ -1,7 +1,7 @@
 import { CalendarPlus, MapPin, Clock, User, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile, getEndTime, parseStartTime } from "@/lib/calendar";
+import { BirthdayInfo, generateGoogleCalendarUrl, generateIcsFile, getEndTime, parseStartTime, parseDate } from "@/lib/calendar";
 import { motion } from "framer-motion";
 
 interface BirthdayResultProps {
@@ -41,7 +41,8 @@ export function BirthdayResult({ info }: BirthdayResultProps) {
   };
 
   const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split("-").map(Number);
+    const cleanDate = parseDate(dateStr);
+    const [y, m, d] = cleanDate.split("-").map(Number);
     return new Date(y, m - 1, d).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",

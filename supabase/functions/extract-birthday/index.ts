@@ -33,14 +33,14 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a birthday invitation parser. Extract birthday event details from images. Always respond using the provided tool. Pay close attention to end times (e.g., 'ends at 8 PM', 'until 22:00', '18:00 to 21:00').",
+            content: "You are a highly accurate birthday invitation parser. Your primary goal is to extract event details EXACTLY as they appear. CRITICAL: For the 'time' field, you MUST transcribe the entire time string exactly as it is written in the image (e.g., '18:30 a 21:30 hrs'). Do not summarize, truncate, or reformat it.",
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (provide the FULL time text from the image for better parsing), the location/place, and the end time (in HH:MM 24h format if explicitly stated). If you can't find a specific field, set it to null.",
+                text: "Extract the birthday event details from this invitation image. Transcribe the 'TIME' and 'DATE' sections exactly as they appear. If there is a range (e.g., '18:30 a 21:30'), include the entire range in the 'time' field.",
               },
               {
                 type: "image_url",
@@ -59,11 +59,10 @@ serve(async (req) => {
                 type: "object",
                 properties: {
                   name: { type: "string", description: "The birthday person's name" },
-                  date: { type: "string", description: "Event date in YYYY-MM-DD format" },
-                  time: { type: "string", description: "Event start time or FULL time string from the image (e.g., '18:30 a 21:30 hrs')" },
-                  end_time: { type: "string", description: "Event end time in HH:MM 24h format if explicitly stated" },
+                  date: { type: "string", description: "Event date exactly as written (e.g., 'Sábado 7 de Marzo')" },
+                  time: { type: "string", description: "The FULL time string exactly as written in the image (e.g., '18:30 a 21:30 hrs')" },
                   location: { type: "string", description: "Event venue/location" },
-                  additional_notes: { type: "string", description: "Any other details. Include the original time text here as well to be safe." },
+                  additional_notes: { type: "string", description: "Any other details (RSVP, theme, etc.)" },
                 },
                 required: ["name", "date", "time", "location"],
                 additionalProperties: false,
