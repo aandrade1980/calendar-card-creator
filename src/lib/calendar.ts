@@ -1,7 +1,7 @@
 export interface BirthdayInfo {
   name: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
+  date: string; // YYYY-MM-DD or raw string
+  time: string; // HH:MM or raw string
   location: string;
   end_time?: string; // HH:MM - explicitly stated end time
   additional_notes?: string;
@@ -14,26 +14,28 @@ export interface BirthdayInfo {
 export function parseEndTimeFromNotes(notes?: string): string | undefined {
   if (!notes) return undefined;
 
-  // Match patterns like "ends at 20:00", "ends at 8:00 PM", "18:30 to 21:30 hrs", "18:30 a 21:30"
   const patterns = [
-    // Match time ranges like "18:30 to 21:30", "18:30 a 21:30", "6:30 PM to 8:30 PM" - capture SECOND time
-    /\d{1,2}:\d{2}(?:\s*[APap][Mm])?\s*(?:to|a|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?(?:\s*(?:hrs?|hours?))?)/i,
-    // Match "Time is 18:30 to 21:30 hrs" or "Time is 18:30 a 21:30 hrs"
-    /time\s+is\s+\d{1,2}:\d{2}\s*(?:to|a|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?(?:\s*(?:hrs?|hours?))?)/i,
-    /ends?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
-    /finishes?\s+at\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
-    /until\s+(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
+    // 1. Explicit ranges: "18:30 a 21:30", "18:30 to 21:30", "6:30 PM - 9:30 PM"
+    // Capture group 2 is always the end time
+    /(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*(?:to|a|until|through|[-–—])\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)(?:\s*(?:hrs?|hours?|hr\.?))?/i,
+    
+    // 2. Explicit end phrases: "ends at 21:30", "end time 9:00 PM", "until 22:00"
+    // Capture group 1 is the end time
+    /(?:ends?|finishes?|until|end\s+time)\s+(?:at\s+|is\s+)?(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/i,
   ];
 
-  for (const pattern of patterns) {
-    const match = notes.match(pattern);
+  for (let i = 0; i < patterns.length; i++) {
+    const match = notes.match(patterns[i]);
     if (match) {
-      let timeStr = match[1].trim().toUpperCase();
+      // If it's the range pattern (index 0), end time is in group 2.
+      // If it's the phrase pattern (index 1), end time is in group 1.
+      const rawTime = i === 0 ? match[2] : match[1];
+      let timeStr = rawTime.trim().toUpperCase();
 
-      // Strip out "hrs", "hours", "hr", etc. that may be appended
-      timeStr = timeStr.replace(/\s*(hrs?|hours?|hrs?\.?)\b/gi, '').trim();
+      // Clean up suffixes
+      timeStr = timeStr.replace(/\s*(hrs?|hours?|hr\.?)\b/gi, '').trim();
 
-      // Convert 12-hour to 24-hour format
+      // 12h -> 24h
       if (timeStr.includes('AM') || timeStr.includes('PM')) {
         const isPM = timeStr.includes('PM');
         const [h, m] = timeStr.replace(/[APM]/gi, '').trim().split(':').map(Number);
@@ -42,9 +44,11 @@ export function parseEndTimeFromNotes(notes?: string): string | undefined {
         return `${hour24.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       }
 
-      // Already in 24-hour format
+      // Already 24h
       const [h, m] = timeStr.split(':').map(Number);
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      if (!isNaN(h) && !isNaN(m)) {
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      }
     }
   }
 
@@ -52,15 +56,78 @@ export function parseEndTimeFromNotes(notes?: string): string | undefined {
 }
 
 /**
- * Get end time: first check explicit end_time, then parse from notes
+ * Get end time: first check explicit end_time, then parse from notes, then try parsing from time itself
  */
 export function getEndTime(info: BirthdayInfo): string | undefined {
-  return info.end_time || parseEndTimeFromNotes(info.additional_notes);
+  return info.end_time || parseEndTimeFromNotes(info.additional_notes) || parseEndTimeFromNotes(info.time);
+}
+
+/**
+ * Parse start time from the time field.
+ * If it's a range like "18:30 to 21:30", it returns the first time "18:30".
+ */
+export function parseStartTime(timeStr: string): string {
+  // Specifically look for the FIRST time pattern in the string
+  const match = timeStr.match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
+  if (match) {
+    let time = match[1].trim().toUpperCase();
+    if (time.includes('AM') || time.includes('PM')) {
+      const isPM = time.includes('PM');
+      const [h, m] = time.replace(/[APM]/gi, '').trim().split(':').map(Number);
+      let hour24 = h % 12;
+      if (isPM) hour24 += 12;
+      return `${hour24.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
+    const [h, m] = time.split(':').map(Number);
+    if (!isNaN(h) && !isNaN(m)) {
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
+  }
+  // Fallback to original if no match, though we hope for HH:MM
+  return timeStr.split(/\s+/)[0].replace(/[^0-9:]/g, '');
+}
+
+/**
+ * Parse date from the date field.
+ * Attempts to handle YYYY-MM-DD or raw strings like "Sábado 7 de Marzo".
+ */
+export function parseDate(dateStr: string): string {
+  // If it's already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  const months: Record<string, string> = {
+    'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+    'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+    'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+    'january': '01', 'february': '02', 'march': '03', 'april': '04',
+    'may': '05', 'june': '06', 'july': '07', 'august': '08',
+    'september': '09', 'october': '10', 'november': '11', 'december': '12'
+  };
+
+  const lowerStr = dateStr.toLowerCase();
+  const dayMatch = lowerStr.match(/(\d{1,2})/);
+  const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+  
+  let month = '01';
+  for (const [name, num] of Object.entries(months)) {
+    if (lowerStr.includes(name)) {
+      month = num;
+      break;
+    }
+  }
+
+  // Use current year if not found
+  const yearMatch = lowerStr.match(/(\d{4})/);
+  const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
+  return `${year}-${month}-${day}`;
 }
 
 export function generateGoogleCalendarUrl(info: BirthdayInfo): string {
-  const startDate = info.date.replace(/-/g, "");
-  const startTime = info.time.replace(":", "") + "00";
+  const cleanDate = parseDate(info.date);
+  const cleanStartTime = parseStartTime(info.time);
+  const startDate = cleanDate.replace(/-/g, "");
+  const startTime = cleanStartTime.replace(":", "") + "00";
 
   // Calculate end time: use explicit end_time or parse from notes, otherwise default to +2 hours
   let endTime: string;
@@ -68,7 +135,7 @@ export function generateGoogleCalendarUrl(info: BirthdayInfo): string {
   if (endTimeStr) {
     endTime = endTimeStr.replace(":", "") + "00";
   } else {
-    const [h, m] = info.time.split(":").map(Number);
+    const [h, m] = cleanStartTime.split(":").map(Number);
     const endH = ((h + 2) % 24).toString().padStart(2, "0");
     endTime = `${endH}${m.toString().padStart(2, "0")}00`;
   }
@@ -89,8 +156,10 @@ export function generateGoogleCalendarUrl(info: BirthdayInfo): string {
 }
 
 export function generateIcsFile(info: BirthdayInfo): string {
-  const startDate = info.date.replace(/-/g, "");
-  const startTime = info.time.replace(":", "") + "00";
+  const cleanDate = parseDate(info.date);
+  const cleanStartTime = parseStartTime(info.time);
+  const startDate = cleanDate.replace(/-/g, "");
+  const startTime = cleanStartTime.replace(":", "") + "00";
 
   // Calculate end time: use explicit end_time or parse from notes, otherwise default to +2 hours
   let endTime: string;
@@ -98,7 +167,7 @@ export function generateIcsFile(info: BirthdayInfo): string {
   if (endTimeStr) {
     endTime = endTimeStr.replace(":", "") + "00";
   } else {
-    const [h, m] = info.time.split(":").map(Number);
+    const [h, m] = cleanStartTime.split(":").map(Number);
     const endH = ((h + 2) % 24).toString().padStart(2, "0");
     endTime = `${endH}${m.toString().padStart(2, "0")}00`;
   }

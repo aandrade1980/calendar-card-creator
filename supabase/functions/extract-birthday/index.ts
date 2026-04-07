@@ -3,11 +3,38 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 3
+): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(url, options);
+
+    if (res.status !== 429) {
+      return res;
+    }
+
+    const retryAfter = res.headers.get("Retry-After");
+    const delay = retryAfter
+      ? parseInt(retryAfter) * 1000
+      : Math.min(Math.pow(2, attempt) * 4000, 30000); // ✅ Start at 4s, cap at 30s
+
+    console.warn(`429 received. Retrying in ${delay}ms (attempt ${attempt + 1})`);
+    await new Promise((r) => setTimeout(r, delay));
+  }
+
+  throw new Error("Exceeded retries due to rate limiting");
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const { imageBase64 } = await req.json();
@@ -19,102 +46,109 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured");
+    }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: "You are a birthday invitation parser. Extract birthday event details from images. Always respond using the provided tool.",
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Extract the birthday event details from this invitation image. Look for: the birthday person's name, the date (in YYYY-MM-DD format), the time (in HH:MM 24h format), the location/place, and the end time (in HH:MM 24h format if explicitly stated, e.g., 'ends at 20:00'). If you can't find a specific field, set it to null.",
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
+
+    const body = JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `You are a highly accurate birthday invitation parser. Extract the birthday event details from this invitation image. Transcribe the TIME and DATE sections exactly as they appear. If there is a range (e.g., '18:30 a 21:30'), include the entire range in the 'time' field.`,
+            },
+            {
+              inline_data: {
+                mime_type: "image/jpeg",
+                data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
               },
-              {
-                type: "image_url",
-                image_url: { url: imageBase64 },
-              },
-            ],
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
+            },
+          ],
+        },
+      ],
+      tools: [
+        {
+          function_declarations: [
+            {
               name: "extract_birthday_info",
               description: "Extract birthday event information from an invitation image",
               parameters: {
                 type: "object",
                 properties: {
-                  name: { type: "string", description: "The birthday person's name" },
-                  date: { type: "string", description: "Event date in YYYY-MM-DD format" },
-                  time: { type: "string", description: "Event start time in HH:MM 24h format" },
-                  end_time: { type: "string", description: "Event end time in HH:MM 24h format (e.g., '20:00' if the invitation states when the event ends)" },
-                  location: { type: "string", description: "Event venue/location" },
-                  additional_notes: { type: "string", description: "Any other relevant details like theme, dress code, etc." },
+                  name: { type: "string" },
+                  date: { type: "string" },
+                  time: { type: "string" },
+                  location: { type: "string" },
+                  additional_notes: { type: "string" },
                 },
                 required: ["name", "date", "time", "location"],
-                additionalProperties: false,
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_birthday_info" } },
-      }),
+          ],
+        },
+      ],
+      tool_config: {
+        function_calling_config: {
+          mode: "ANY",
+          allowed_function_names: ["extract_birthday_info"],
+        },
+      },
+      generationConfig: {
+        maxOutputTokens: 200,
+        temperature: 0.2,
+      },
+    });
+
+    const response = await fetchWithRetry(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error [${response.status}]: ${text}`);
+      return new Response(
+        JSON.stringify({ error: `AI error (${response.status})`, details: text }),
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const toolCall = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
 
     if (!toolCall) {
-      return new Response(JSON.stringify({ error: "Could not extract birthday info from this image" }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Could not extract birthday info from this image" }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const extracted = JSON.parse(toolCall.function.arguments);
-
-    return new Response(JSON.stringify({ success: true, data: extracted }), {
+    return new Response(JSON.stringify({ success: true, data: toolCall.args }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e) {
     console.error("extract-birthday error:", e);
     const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // ✅ Return 429 with friendly message when Gemini rate limit is exhausted
+    const isRateLimit = msg.includes("rate limit") || msg.includes("Exceeded retries");
+
+    return new Response(
+      JSON.stringify({
+        error: isRateLimit
+          ? "The service is busy, please try again in a minute."
+          : msg,
+      }),
+      {
+        status: isRateLimit ? 429 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
